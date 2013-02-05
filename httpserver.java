@@ -16,3 +16,9 @@ public class Server{
 		}
 	}
 }
+
+class Clienthandler implements Runnable{
+	
+	
+	
+}

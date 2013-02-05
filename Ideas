@@ -1,0 +1,7 @@
+Use existing server skeleton with multithreading
+Parse for operation
+Github
+Mime types for file types
+Files.readAllBytes to convert files to byte[]
+setSoTimeout - timeout for connection
+Howto: Prevent server from accessing files outside of the directory

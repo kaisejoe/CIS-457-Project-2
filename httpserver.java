@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.Vector;
 
 public class Server{
-  public static void main(String args[]) throws Exception{
+	public static void main(String args[]) throws Exception{
 		int port = 8080;
 		ServerSocket listenSocket = new ServerSocket(port);
 		System.out.println("HTTP server started on port " + port + ".");
@@ -19,6 +19,23 @@ public class Server{
 
 class Clienthandler implements Runnable{
 	
+	Socket connectionSocket;
 	
+	Clienthandler(Socket s){
+		connectionSocket = s;
+	}
 	
+	void run(){
+		try{
+	
+		} catch (SocketTimeoutException e) {
+			sendPacket(.....);
+		}
+	}
+	
+
+	returntype sendPacket(int statusCode,  , something content){
+		outToClient.
+	}
+
 }

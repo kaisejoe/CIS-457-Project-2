@@ -66,9 +66,9 @@ class Clienthandler implements Runnable{
 	}
 	PrintWriter out = new PrintWriter(new FileWriter(logfile))); 
 	
-	public writeToLog(String s){		
+	public void writeToLog(String s){		
 		out.println(s); 
-		if(s.equals("Close Log"){
+		if(s.equals("Close Log")){
 			out.close();
 		}
 	}

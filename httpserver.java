@@ -13,7 +13,7 @@ public class Server{
 		* Will set the log file, doc root, and port properly
 		* if no port, port is preset to 8080.
 		*/ 
-		String docroot = "";
+		String docroot = ""; //Need to set default directory
 		String logfile = "";
 		int x = 0;
 		while(args[x] != NULL){

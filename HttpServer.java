@@ -6,14 +6,44 @@ import java.nio.file.*;
 import javax.activation.*;
 
 public class HtmlServer {
-  private static final int port = 9001;
+	// Defualt Port set to 8080	
+  private static final int port = 8080;
 	public static void main(String args[]) throws Exception{
+		/* Reads in the Args from the project call
+		*  Will read in all args, does not matter the order as
+		*  long as each call is preceded by the proper - identifier
+		* Will set the log file, doc root, and port properly
+		* if no port, port is preset to 8080.
+		*/ 
+		String docroot = "System.getProperty("user.dir");"; //set default directory
+		String logfile = "";
+		int x = 0;
+		while(args[x] != NULL){
+			switch(args[x]){
+				case"-p"{
+					x++;
+					port = Integer.parseInt(args[x]);
+					break;
+				}case"-docroot"{
+					x++;
+					docroot = args[x];
+					break;
+				}case"-logfile"
+					x++;
+					logfile = args[x];
+					break;
+				}default{
+					System.out.println("Error reading args");
+				}
+				x++;
+			}
+		}
 		ServerSocket listener = new ServerSocket(port);
 		System.out.println("HTML server is running on port " + port + ".");
 		
 		while(true){
 			Socket s = listener.accept();
-			Clienthandler c = new Clienthandler(s);
+			Clienthandler c = new Clienthandler(s, docroot, logfile);
 			
 			Thread t = new Thread(c);
 			t.start();
@@ -27,7 +57,8 @@ class Clienthandler implements Runnable{
 	String mimeType;
 	String date;
 	String lastMod;
-	File file;
+	String directory;
+	FileWriter file;
 	StringTokenizer st;
 	byte[] fileBytes;
 	BufferedReader clientRequest;
@@ -38,8 +69,10 @@ class Clienthandler implements Runnable{
 	
 	boolean valid = false;
 	
-	Clienthandler(Socket s){
+	Clienthandler(Socket s, String docroot, String logfile){
 		connection = s;
+		file = new FileWriter(logfile, true);
+		directory = docroot;
 		
 		try{
 			connection.setKeepAlive(false);
@@ -151,7 +184,18 @@ class Clienthandler implements Runnable{
 		
 		return file.exists();
 	}
-	
+	private void writeToLog(String s){		
+		out.write(s); 
+		if(s.equals("Close Log")){
+			out.close();
+		}
+	}
+	private void sendContentHeader(){
+		//
+	}
+	private void sendLengthHeader(){
+		//
+	}
 	private String getLastModified(){
 		dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
 		return dateFormat.format(file.lastModified());

@@ -17,8 +17,7 @@ public class HtmlServer {
 		*/ 
 		String docroot = "System.getProperty("user.dir");"; //set default directory
 		String logfile = "";
-		int x = 0;
-		while(args[x] != NULL){
+		for(x = 0; x < args.size; x++){
 			switch(args[x]){
 				case"-p"{
 					x++;
@@ -35,7 +34,6 @@ public class HtmlServer {
 				}default{
 					System.out.println("Error reading args");
 				}
-				x++;
 			}
 		}
 		ServerSocket listener = new ServerSocket(port);
@@ -53,6 +51,7 @@ public class HtmlServer {
 
 class Clienthandler implements Runnable{
 	Socket connection;
+	int length;
 	String line;
 	String mimeType;
 	String date;
@@ -96,8 +95,10 @@ class Clienthandler implements Runnable{
 			if(!parseRequest()) sendNotFound();
 			
 			
-			mimeType = URLConnection.guessContentTypeFromName(file.getName());
-			System.out.println(mimeType);////////////
+			mimeType = URLConnection.guessContentTypeFromName(file.getName());//Can you use URLConnection.getContentType();?
+			System.out.println("Type: " + mimeType);////////////
+			length = URLConnection.getContentLength();
+			System.out.println("Length: " + length);/////////
 			fileBytes = Files.readAllBytes(file.toPath());
 			lastMod = getLastModified();
 			System.out.println(lastMod); ///////////////
@@ -140,9 +141,15 @@ class Clienthandler implements Runnable{
 	private synchronized void sendValidResponse(){
 		try{
 			clientReply.writeBytes("HTTP/1.1 200 OK\r\n");
+			writeToLog("HTTP/1.1 200 OK\r\n");
 			clientReply.writeBytes("Content-Type: " + mimeType + "\r\n");
+			writeToLog("Content-Type: " + mimeType + "\r\n");
 			clientReply.writeBytes("Last-Modified: " + lastMod + "\r\n");
+			writeToLog("Last-Modified: " + lastMod + "\r\n");
 			clientReply.writeBytes("Date: " + date + "\r\n");
+			writeToLog("Date: " + date + "\r\n");
+			clientReply.writeBytes("Length: " + length + "\r\n");
+			writeToLog("Length: " + length + "\r\n");
 			if(connection.getKeepAlive()){
 				clientReply.writeBytes("Connection: keep-alive\r\n");
 			}else{
@@ -178,28 +185,24 @@ class Clienthandler implements Runnable{
 			if(st.nextToken().equals("keep-alive")){
 				connection.setSoTimeout(20000);
 			}
+			writeToLog("Request: " + line);
 		}catch(Exception e){
 			System.out.println("Error parsing request.");
 		}
 		
 		return file.exists();
 	}
-	private void writeToLog(String s){		
+	private synchronized void writeToLog(String s){		
 		out.write(s); 
 		if(s.equals("Close Log")){
 			out.close();
 		}
 	}
-	private void sendContentHeader(){
-		//
-	}
-	private void sendLengthHeader(){
-		//
-	}
 	private String getLastModified(){
 		dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
 		return dateFormat.format(file.lastModified());
 	}
+	
 	
 	private String getServerTime() {
 		Calendar calendar = Calendar.getInstance();

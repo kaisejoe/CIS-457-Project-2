@@ -57,7 +57,9 @@ class Clienthandler implements Runnable{
 	String date;
 	String lastMod;
 	String directory;
-	FileWriter file;
+	File file;
+	FileWriter filewrite;
+	BufferedWriter out;
 	StringTokenizer st;
 	byte[] fileBytes;
 	BufferedReader clientRequest;
@@ -70,13 +72,15 @@ class Clienthandler implements Runnable{
 	
 	Clienthandler(Socket s, String docroot, String logfile){
 		connection = s;
+		file = new File(logfile);
 		try {
-			file = new FileWriter(logfile, true);
+			filewrite = new FileWriter(logfile);
 		} catch (IOException e1) {
-			System.out.println("Could not find the file.");
 			e1.printStackTrace();
 		}
+		out = new BufferedWriter(filewrite);
 		directory = docroot;
+		
 		
 		try{
 			connection.setKeepAlive(false);
@@ -198,9 +202,17 @@ class Clienthandler implements Runnable{
 		return file.exists();
 	}
 	private synchronized void writeToLog(String s){		
-		out.write(s); 
+		try {
+			out.write(s);
+		} catch (IOException e) {
+			e.printStackTrace();
+		} 
 		if(s.equals("Close Log")){
-			out.close();
+			try {
+				out.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
 	}
 	private String getLastModified(){

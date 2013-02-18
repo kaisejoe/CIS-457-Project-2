@@ -7,7 +7,7 @@ import javax.activation.*;
 
 public class HtmlServer {
 	// Defualt Port set to 8080	
-  private static final int port = 8080;
+  private static int port = 8080;
 	public static void main(String args[]) throws Exception{
 		/* Reads in the Args from the project call
 		*  Will read in all args, does not matter the order as
@@ -15,23 +15,23 @@ public class HtmlServer {
 		* Will set the log file, doc root, and port properly
 		* if no port, port is preset to 8080.
 		*/ 
-		String docroot = "System.getProperty("user.dir");"; //set default directory
+		String docroot = System.getProperty("user.dir"); //set default directory
 		String logfile = "";
-		for(x = 0; x < args.size; x++){
+		for(int x = 0; x < args.length; x++){
 			switch(args[x]){
-				case"-p"{
+				case"-p":{
 					x++;
 					port = Integer.parseInt(args[x]);
 					break;
-				}case"-docroot"{
+				}case"-docroot":{
 					x++;
 					docroot = args[x];
 					break;
-				}case"-logfile"
+				}case"-logfile":{
 					x++;
 					logfile = args[x];
 					break;
-				}default{
+				}default:{
 					System.out.println("Error reading args");
 				}
 			}
@@ -70,7 +70,12 @@ class Clienthandler implements Runnable{
 	
 	Clienthandler(Socket s, String docroot, String logfile){
 		connection = s;
-		file = new FileWriter(logfile, true);
+		try {
+			file = new FileWriter(logfile, true);
+		} catch (IOException e1) {
+			System.out.println("Could not find the file.");
+			e1.printStackTrace();
+		}
 		directory = docroot;
 		
 		try{
@@ -94,8 +99,8 @@ class Clienthandler implements Runnable{
 			
 			if(!parseRequest()) sendNotFound();
 			
-			
-			mimeType = URLConnection.guessContentTypeFromName(file.getName());//Can you use URLConnection.getContentType();?
+			URLConnection url = new URLConnection("");//not working yet
+			mimeType = URLConnection.getContentType();
 			System.out.println("Type: " + mimeType);////////////
 			length = URLConnection.getContentLength();
 			System.out.println("Length: " + length);/////////

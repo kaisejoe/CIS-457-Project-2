@@ -5,7 +5,7 @@ import java.util.*;
 import java.nio.file.*;
 import javax.activation.*;
 
-public class HtmlServer {
+public class HttpServer {
 	// Defualt Port set to 8080	
   private static int port = 8080;
 	public static void main(String args[]) throws Exception{
@@ -37,7 +37,7 @@ public class HtmlServer {
 			}
 		}
 		ServerSocket listener = new ServerSocket(port);
-		System.out.println("HTML server is running on port " + port + ".");
+		System.out.println("HTTP server is running on port " + port + ".");
 		
 		while(true){
 			Socket s = listener.accept();

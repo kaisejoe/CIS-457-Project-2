@@ -193,7 +193,7 @@ class Clienthandler implements Runnable{
 	}
 	
 	private static synchronized void writeToLog(String text, String logfile){
-		if(logfile.equals(""){
+		if(logfile.equals("")){
 			System.out.println("Not Log File Specified.");
 		}else{		
 			try {

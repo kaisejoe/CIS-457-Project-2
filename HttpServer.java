@@ -5,7 +5,7 @@ import java.util.*;
 import java.nio.file.*;
 import javax.activation.*;
 
-public class HttpServer {
+public class log {
 	// Defualt Port set to 8080
     private static int port = 8080;
 	public static void main(String args[]) throws Exception{
@@ -30,6 +30,7 @@ public class HttpServer {
 				}case"-logfile":{
 					x++;
 					logfile = args[x];
+					System.out.println("Log:" + logfile);
 					break;
 				}default:{
 					System.out.println("Error reading args");
@@ -51,10 +52,9 @@ public class HttpServer {
 
 class Clienthandler implements Runnable{
 	Socket connection;
-	String line, mimeType, date, lastMod;
-	private static String directory;
+	String line, mimeType, date, lastMod, directory;
+	private static String log;
 	File file;
-	FileWriter filewrite;
 	BufferedWriter out;
 	StringTokenizer st;
 	byte[] fileBytes;
@@ -69,7 +69,7 @@ class Clienthandler implements Runnable{
 	Clienthandler(Socket s, String docroot, String logfile){
 		connection = s;
 		file = new File(logfile);
-		directory = docroot;
+		log = logfile;
 		
 		try{
 			connection.setKeepAlive(false);
@@ -137,24 +137,24 @@ class Clienthandler implements Runnable{
 	private synchronized void sendValidResponse(){
 		try{
 			clientReply.writeBytes("HTTP/1.1 200 OK\r\n");
-			writeToLog("HTTP/1.1 200 OK\r\n", directory);
+			writeToLog("HTTP/1.1 200 OK\r\n", log);
 			clientReply.writeBytes("Content-Type: " + mimeType + "\r\n");
-			writeToLog("Content-Type: " + mimeType + "\r\n", directory);
+			writeToLog("Content-Type: " + mimeType + "\r\n", log);
 			clientReply.writeBytes("Last-Modified: " + lastMod + "\r\n");
-			writeToLog("Last-Modified: " + lastMod + "\r\n", directory);
+			writeToLog("Last-Modified: " + lastMod + "\r\n", log);
 			clientReply.writeBytes("Date: " + date + "\r\n");
-			writeToLog("Date: " + date + "\r\n", directory);
+			writeToLog("Date: " + date + "\r\n", log);
 			//clientReply.writeBytes("Length: " + length + "\r\n");
-			//writeToLog("Length: " + length + "\r\n", directory);
+			//writeToLog("Length: " + length + "\r\n", log);
 			if(connection.getKeepAlive()){
 				clientReply.writeBytes("Connection: keep-alive\r\n");
-				writeToLog("Connection: keep-alive\r\n", directory);
+				writeToLog("Connection: keep-alive\r\n", log);
 			}else{
 				clientReply.writeBytes("Connection: close\r\n");
-				writeToLog("Connection: close\r\n", directory);
+				writeToLog("Connection: close\r\n", log);
 			}
 			clientReply.writeBytes("\r\n");
-			writeToLog("\r\n", directory);
+			writeToLog("\r\n", log);
 			
 			for(int i = 0; i < fileBytes.length; i++){
 				clientReply.write(fileBytes[i]);
@@ -194,7 +194,7 @@ class Clienthandler implements Runnable{
 	
 	private static synchronized void writeToLog(String text, String logfile){
 		if(logfile.equals("")){
-			System.out.println("Not Log File Specified.");
+			System.out.println("No Log File Specified.");
 		}else{		
 			try {
 				PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(logfile, true)));
@@ -202,6 +202,7 @@ class Clienthandler implements Runnable{
 				out.close();
 			} catch (IOException e) {
 				System.out.println("Error Writing to Log.");
+				e.printStackTrace();
 			}	
 		}
 	}

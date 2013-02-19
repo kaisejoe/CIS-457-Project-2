@@ -6,15 +6,15 @@ import java.nio.file.*;
 import javax.activation.*;
 
 public class HttpServer {
-	// Defualt Port set to 8080	
-  private static int port = 8080;
+	// Defualt Port set to 8080
+    private static int port = 8080;
 	public static void main(String args[]) throws Exception{
 		/* Reads in the Args from the project call
-		*  Will read in all args, does not matter the order as
-		*  long as each call is preceded by the proper - identifier
-		* Will set the log file, doc root, and port properly
-		* if no port, port is preset to 8080.
-		*/ 
+         *  Will read in all args, does not matter the order as
+         *  long as each call is preceded by the proper - identifier
+         * Will set the log file, doc root, and port properly
+         * if no port, port is preset to 8080.
+         */
 		String docroot = System.getProperty("user.dir"); //set default directory
 		String logfile = "";
 		for(int x = 0; x < args.length; x++){
@@ -37,7 +37,7 @@ public class HttpServer {
 			}
 		}
 		ServerSocket listener = new ServerSocket(port);
-		System.out.println("HTTP server is running on port " + port + ".");
+		System.out.println("HTML server is running on port " + port + ".");
 		
 		while(true){
 			Socket s = listener.accept();
@@ -51,12 +51,7 @@ public class HttpServer {
 
 class Clienthandler implements Runnable{
 	Socket connection;
-	int length;
-	String line;
-	String mimeType;
-	String date;
-	String lastMod;
-	String directory;
+	String line, mimeType, date, lastMod, directory;
 	File file;
 	FileWriter filewrite;
 	BufferedWriter out;
@@ -78,9 +73,8 @@ class Clienthandler implements Runnable{
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
-		out = new BufferedWriter(filewrite);
+		//out = new BufferedWriter(filewrite);
 		directory = docroot;
-		
 		
 		try{
 			connection.setKeepAlive(false);
@@ -103,11 +97,9 @@ class Clienthandler implements Runnable{
 			
 			if(!parseRequest()) sendNotFound();
 			
-			URLConnection url = new URLConnection("");//not working yet
-			mimeType = URLConnection.getContentType();
-			System.out.println("Type: " + mimeType);////////////
-			length = URLConnection.getContentLength();
-			System.out.println("Length: " + length);/////////
+			
+			mimeType = URLConnection.guessContentTypeFromName(file.getName());
+			System.out.println("Type: "+mimeType);////////////
 			fileBytes = Files.readAllBytes(file.toPath());
 			lastMod = getLastModified();
 			System.out.println(lastMod); ///////////////
@@ -150,15 +142,15 @@ class Clienthandler implements Runnable{
 	private synchronized void sendValidResponse(){
 		try{
 			clientReply.writeBytes("HTTP/1.1 200 OK\r\n");
-			writeToLog("HTTP/1.1 200 OK\r\n");
+			//writeToLog("HTTP/1.1 200 OK\r\n");
 			clientReply.writeBytes("Content-Type: " + mimeType + "\r\n");
-			writeToLog("Content-Type: " + mimeType + "\r\n");
+			//writeToLog("Content-Type: " + mimeType + "\r\n");
 			clientReply.writeBytes("Last-Modified: " + lastMod + "\r\n");
-			writeToLog("Last-Modified: " + lastMod + "\r\n");
+			//writeToLog("Last-Modified: " + lastMod + "\r\n");
 			clientReply.writeBytes("Date: " + date + "\r\n");
-			writeToLog("Date: " + date + "\r\n");
-			clientReply.writeBytes("Length: " + length + "\r\n");
-			writeToLog("Length: " + length + "\r\n");
+			//writeToLog("Date: " + date + "\r\n");
+			//clientReply.writeBytes("Length: " + length + "\r\n");
+			//writeToLog("Length: " + length + "\r\n");
 			if(connection.getKeepAlive()){
 				clientReply.writeBytes("Connection: keep-alive\r\n");
 			}else{
@@ -194,32 +186,32 @@ class Clienthandler implements Runnable{
 			if(st.nextToken().equals("keep-alive")){
 				connection.setSoTimeout(20000);
 			}
-			writeToLog("Request: " + line);
 		}catch(Exception e){
 			System.out.println("Error parsing request.");
 		}
 		
 		return file.exists();
 	}
-	private synchronized void writeToLog(String s){		
+	
+	/*private synchronized void writeToLog(String s){
 		try {
-			out.write(s);
+			//out.write(s);
 		} catch (IOException e) {
 			e.printStackTrace();
-		} 
+		}
 		if(s.equals("Close Log")){
 			try {
-				out.close();
+				//out.close();
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
 		}
-	}
+	}*/
+	
 	private String getLastModified(){
 		dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
 		return dateFormat.format(file.lastModified());
 	}
-	
 	
 	private String getServerTime() {
 		Calendar calendar = Calendar.getInstance();

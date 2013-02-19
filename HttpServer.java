@@ -51,7 +51,7 @@ public class HttpServer {
 
 class Clienthandler implements Runnable{
 	Socket connection;
-	String line, mimeType, date, lastMod, directory;
+	String line, mimeType, date, lastMod;
 	private static String directory;
 	File file;
 	FileWriter filewrite;

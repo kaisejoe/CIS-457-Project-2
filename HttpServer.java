@@ -52,6 +52,7 @@ public class HttpServer {
 class Clienthandler implements Runnable{
 	Socket connection;
 	String line, mimeType, date, lastMod, directory;
+	private static String directory;
 	File file;
 	FileWriter filewrite;
 	BufferedWriter out;
@@ -68,12 +69,6 @@ class Clienthandler implements Runnable{
 	Clienthandler(Socket s, String docroot, String logfile){
 		connection = s;
 		file = new File(logfile);
-		try {
-			filewrite = new FileWriter(logfile);
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
-		//out = new BufferedWriter(filewrite);
 		directory = docroot;
 		
 		try{
@@ -142,21 +137,24 @@ class Clienthandler implements Runnable{
 	private synchronized void sendValidResponse(){
 		try{
 			clientReply.writeBytes("HTTP/1.1 200 OK\r\n");
-			//writeToLog("HTTP/1.1 200 OK\r\n");
+			writeToLog("HTTP/1.1 200 OK\r\n", directory);
 			clientReply.writeBytes("Content-Type: " + mimeType + "\r\n");
-			//writeToLog("Content-Type: " + mimeType + "\r\n");
+			writeToLog("Content-Type: " + mimeType + "\r\n", directory);
 			clientReply.writeBytes("Last-Modified: " + lastMod + "\r\n");
-			//writeToLog("Last-Modified: " + lastMod + "\r\n");
+			writeToLog("Last-Modified: " + lastMod + "\r\n", directory);
 			clientReply.writeBytes("Date: " + date + "\r\n");
-			//writeToLog("Date: " + date + "\r\n");
+			writeToLog("Date: " + date + "\r\n", directory);
 			//clientReply.writeBytes("Length: " + length + "\r\n");
-			//writeToLog("Length: " + length + "\r\n");
+			//writeToLog("Length: " + length + "\r\n", directory);
 			if(connection.getKeepAlive()){
 				clientReply.writeBytes("Connection: keep-alive\r\n");
+				writeToLog("Connection: keep-alive\r\n", directory);
 			}else{
 				clientReply.writeBytes("Connection: close\r\n");
+				writeToLog("Connection: close\r\n", directory);
 			}
 			clientReply.writeBytes("\r\n");
+			writeToLog("\r\n", directory);
 			
 			for(int i = 0; i < fileBytes.length; i++){
 				clientReply.write(fileBytes[i]);
@@ -186,6 +184,7 @@ class Clienthandler implements Runnable{
 			if(st.nextToken().equals("keep-alive")){
 				connection.setSoTimeout(20000);
 			}
+			writeToLog(line,directory);
 		}catch(Exception e){
 			System.out.println("Error parsing request.");
 		}
@@ -193,20 +192,19 @@ class Clienthandler implements Runnable{
 		return file.exists();
 	}
 	
-	/*private synchronized void writeToLog(String s){
-		try {
-			//out.write(s);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		if(s.equals("Close Log")){
+	private static synchronized void writeToLog(String text, String logfile){
+		if(logfile.equals(""){
+			System.out.println("Not Log File Specified.");
+		}else{		
 			try {
-				//out.close();
+				PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(logfile, true)));
+				out.println(text);
+				out.close();
 			} catch (IOException e) {
-				e.printStackTrace();
-			}
+				System.out.println("Error Writing to Log.");
+			}	
 		}
-	}*/
+	}
 	
 	private String getLastModified(){
 		dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));

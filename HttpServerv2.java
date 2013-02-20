@@ -8,12 +8,40 @@ import javax.activation.*;
 public class HttpServer {
   private static final int port = 8080;
   public static void main(String args[]) throws Exception{
+		/* Reads in the Args from the project call
+        	 *  Will read in all args, does not matter the order as
+        	 *  long as each call is preceded by the proper - identifier
+         	* Will set the log file, doc root, and port properly
+         	* if no port, port is preset to 8080.
+         	*/
+		String docroot = System.getProperty("user.dir"); //set default directory
+		String logfile = "";
+		for(int x = 0; x < args.length; x++){
+			switch(args[x]){
+				case"-p":{
+					x++;
+					port = Integer.parseInt(args[x]);
+					break;
+				}case"-docroot":{
+					x++;
+					docroot = args[x];
+					break;
+				}case"-logfile":{
+					x++;
+					logfile = args[x];
+					System.out.println("Log:" + logfile);
+					break;
+				}default:{
+					System.out.println("Error reading args");
+				}
+			}
+		}
 		ServerSocket listener = new ServerSocket(port);
 		System.out.println("HTML server is running on port " + port + ".");
 
 		while(true){
 			Socket s = listener.accept();
-			Clienthandler c = new Clienthandler(s);
+			Clienthandler c = new Clienthandler(s, docroot, logfile);
 
 			Thread t = new Thread(c);
 			t.start();
@@ -28,6 +56,7 @@ class Clienthandler implements Runnable{
 	String date;
 	String lastMod;
 	String ifMod;
+	private static String log;
 	File file;
 	StringTokenizer st;
 	byte[] fileBytes;
@@ -39,8 +68,9 @@ class Clienthandler implements Runnable{
 			
 	boolean valid = false;
 
-	Clienthandler(Socket s){
+	Clienthandler(Socket s, String docroot, String logfile){
 		connection = s;
+		log = logfile;
 
 		try{
 			connection.setKeepAlive(false);
@@ -91,9 +121,13 @@ class Clienthandler implements Runnable{
 	private synchronized void sendNotImplemented(){
 		try{
 			clientReply.writeBytes("HTTP/1.1 501 Not Implemented\r\n");
+			writeToLog("HTTP/1.1 501 Not Implemented\r\n", log);
 			clientReply.writeBytes("Date: " + date + "\r\n");
+			writeToLog("Date: " + date + "\r\n", log);			
 			clientReply.writeBytes("Connection: close\r\n");
+			writeToLog("Connection: close\r\n", log);
 			clientReply.writeBytes("\r\n");
+			writeToLog("\r\n", log);
 			clientReply.flush();
 			connection.close();
 		}catch(Exception e){
@@ -104,11 +138,17 @@ class Clienthandler implements Runnable{
 	private synchronized void sendNotFound(){
 		try{
 			clientReply.writeBytes("HTTP/1.1 404 Not Found\r\n");
+			writeToLog("HTTP/1.1 404 Not Found\r\n", log);
 			clientReply.writeBytes("Date: " + date + "\r\n");
+			writeToLog("Date: " + date + "\r\n", log);
 			clientReply.writeBytes("Connection: close\r\n");
+			writeToLog("Connection: close\r\n", log);
 			clientReply.writeBytes("\r\n");
-			clientReply.writeBytes("404 File Not Found\n\n");
+			writeToLog("\r\n", log);
+			clientReply.writeBytes("404 File Not Found\r\n");
+			writeToLog("404 File Not Found\r\n", log);
 			clientReply.writeBytes("The server was unable to find the file requested.");
+			writeToLog("The server was unable to find the file requested.", log);
 			clientReply.flush();
 			connection.close();
 		}catch(Exception e){
@@ -119,13 +159,18 @@ class Clienthandler implements Runnable{
 	private synchronized void sendNotModified(){
 		try{
 			clientReply.writeBytes("HTTP/1.1 304 Not Modified\r\n");
+			writeToLog("HTTP/1.1 304 Not Modified\r\n", log);
 			clientReply.writeBytes("Date: " + date + "\r\n");
+			writeToLog("Date: " + date + "\r\n", log);
 			if(connection.getKeepAlive()){
 				clientReply.writeBytes("Connection: keep-alive\r\n");
+				writeToLog("Connection: keep-alive\r\n", log);
 			}else{
 				clientReply.writeBytes("Connection: close\r\n");
+				writeToLog("Connection: close\r\n", log);
 			}
 			clientReply.writeBytes("\r\n");
+			writeToLog("\r\n", log);
 			clientReply.flush();
 			connection.close();
 		}catch(Exception e){
@@ -136,16 +181,24 @@ class Clienthandler implements Runnable{
 	private synchronized void sendValidResponse(){
 		try{
 			clientReply.writeBytes("HTTP/1.1 200 OK\r\n");
+			writeToLog("HTTP/1.1 200 OK\r\n", log);
 			clientReply.writeBytes("Content-Length: " + fileBytes.length + "\r\n");
+			writeToLog("Content-Length: " + fileBytes.length + "\r\n", log);
 			clientReply.writeBytes("Content-Type: " + mimeType + "\r\n");
+			writeToLog("Content-Type: " + mimeType + "\r\n", log);
 			clientReply.writeBytes("Last-Modified: " + lastMod + "\r\n");
+			writeToLog("Last-Modified: " + lastMod + "\r\n", log);
 			clientReply.writeBytes("Date: " + date + "\r\n");
+			writeToLog("Date: " + date + "\r\n", log);
 			if(connection.getKeepAlive()){
 				clientReply.writeBytes("Connection: keep-alive\r\n");
+				writeToLog("Connection: keep-alive\r\n", log);
 			}else{
 				clientReply.writeBytes("Connection: close\r\n");
+				writeToLog("Connection: close\r\n", log);
 			}
 			clientReply.writeBytes("\r\n");
+			writeToLog("\r\n", log);
 
 			for(int i = 0; i < fileBytes.length; i++){
 				clientReply.write(fileBytes[i]);
@@ -195,5 +248,19 @@ class Clienthandler implements Runnable{
 		Calendar calendar = Calendar.getInstance();
 		dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
 		return dateFormat.format(calendar.getTime());
+	}
+	private static synchronized void writeToLog(String text, String logfile){
+		if(logfile.equals("")){
+			System.out.println("No Log File Specified.");
+		}else{		
+			try {
+				PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(logfile, true)));
+				out.println(text);
+				out.close();
+			} catch (IOException e) {
+				System.out.println("Error Writing to Log.");
+				e.printStackTrace();
+			}	
+		}
 	}
 }

@@ -5,6 +5,13 @@ import java.util.*;
 import java.nio.file.*;
 import javax.activation.*;
 
+/*******************************************************************************
+* A simple HTTP server that responds to a HTTP/1.1 GET request. No other request
+* types are supported. Reponses include the 200, 304, 404, and 501.
+*
+* @author Joel Kaiser, Brett Barrett, Corey Bennett, Douglas MacDonald
+*******************************************************************************/
+
 public class HttpServer {
     private static int port = 8080;
     public static void main(String args[]) throws Exception{
@@ -43,6 +50,10 @@ public class HttpServer {
 		}
 		ServerSocket listener = new ServerSocket(port);
 		System.out.println("HTTP server is running on port " + port + ".");
+		
+		if(logfile.equals("")){
+			System.out.println("No log file specified.");
+		}
         
 		while(true){
 			Socket s = listener.accept();
@@ -83,31 +94,34 @@ class Clienthandler implements Runnable{
     
 	public void run(){
 		try{
-			ifMod = "";
+			ifMod = ""; //if modified since
 			clientRequest = new BufferedReader(new InputStreamReader(connection.getInputStream()));
 			clientReply = new DataOutputStream(connection.getOutputStream());
 			line = clientRequest.readLine();
             writeToLog(line+"\r\n",log);
-            valid = line.startsWith("GET");
             
-			if(!valid) sendNotImplemented();
+			if(line != null){ 
+				valid = line.startsWith("GET");
             
-			if(!parseRequest()){
-				sendNotFound();
-			}else{
-				mimeType = URLConnection.guessContentTypeFromName(file.getName());
-
-				fileBytes = Files.readAllBytes(file.toPath());
-				lastMod = getLastModified();
-				date = getServerTime();
-
-				if(!ifMod.equals("")){
-					if(dateFormat.parse(lastMod).after(dateFormat.parse(ifMod))){
-						sendNotModified();
-					}
+				if(!valid) sendNotImplemented();
+            
+				if(!parseRequest()){
+					sendNotFound();
 				}else{
-					System.out.println(mimeType + "  " + lastMod + " " + date);
-					sendValidResponse();
+					mimeType = URLConnection.guessContentTypeFromName(file.getName());
+
+					fileBytes = Files.readAllBytes(file.toPath());
+					lastMod = getLastModified();
+					date = getServerTime();
+
+					if(!ifMod.equals("")){
+						if(dateFormat.parse(lastMod).after(dateFormat.parse(ifMod))){
+							sendNotModified();
+						}
+					}else{
+						System.out.println(mimeType + "  " + lastMod + " " + date);
+						sendValidResponse();
+					}
 				}
 			}
             
@@ -129,7 +143,7 @@ class Clienthandler implements Runnable{
 	private void sendNotImplemented(){
 		try{
 			date = getServerTime();
-			
+
 			clientReply.writeBytes(" HTTP/1.1 501 Not Implemented\r\n");
 			writeToLog("HTTP/1.1 501 Not Implemented\r\n", log);
 			clientReply.writeBytes("Date: " + date + "\r\n");
@@ -153,7 +167,7 @@ class Clienthandler implements Runnable{
 	private void sendNotFound(){
 		try{
 			date = getServerTime();
-			
+
 			clientReply.writeBytes(" HTTP/1.1 404 Not Found\r\n");
 			writeToLog("HTTP/1.1 404 Not Found\r\n", log);
 			clientReply.writeBytes("Date: " + date + "\r\n");
@@ -179,7 +193,7 @@ class Clienthandler implements Runnable{
 			}
 			clientReply.writeBytes("\r\n");
 			writeToLog("\r\n", log);
-			
+
 			clientReply.flush();
 			if(connection.getSoTimeout() == 0) connection.close();
 		}catch(Exception e){
@@ -190,7 +204,7 @@ class Clienthandler implements Runnable{
 	private void sendNotModified(){
 		try{
 			date = getServerTime();
-			
+
 			clientReply.writeBytes(" HTTP/1.1 304 Not Modified\r\n");
 			writeToLog("HTTP/1.1 304 Not Modified\r\n", log);
 			clientReply.writeBytes("Date: " + date + "\r\n");
@@ -214,7 +228,7 @@ class Clienthandler implements Runnable{
 	private void sendValidResponse(){
 		try{
 			date = getServerTime();
-			
+
 			clientReply.writeBytes(" HTTP/1.1 200 OK\r\n");
 			writeToLog("HTTP/1.1 200 OK\r\n", log);
 			clientReply.writeBytes("Content-Length: " + fileBytes.length + "\r\n");
@@ -273,7 +287,7 @@ class Clienthandler implements Runnable{
 						connection.setSoTimeout(0);
 					}
 				}
-				
+
 			}
 			line = clientRequest.readLine();
 		}catch(Exception e){
@@ -294,9 +308,7 @@ class Clienthandler implements Runnable{
 		return dateFormat.format(calendar.getTime());
 	}
 	private static synchronized void writeToLog(String text, String logfile){
-		if(logfile.equals("")){
-			System.out.println("No Log File Specified.");
-		}else{
+		if(!logfile.equals("")){
 			try {
 				PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(logfile, true)));
 				out.println(text);

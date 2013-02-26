@@ -8,7 +8,7 @@ import javax.activation.*;
 public class HttpServer {
     private static int port = 8080;
     public static void main(String args[]) throws Exception{
-    /* Reads in the Args from the project call
+  	/* Reads in the Args from the project call
          *  Will read in all args, does not matter the order as
          *  long as each call is preceded by the proper - identifier
          * Will set the log file, doc root, and port properly
@@ -79,12 +79,6 @@ class Clienthandler implements Runnable{
         }
 		log = logfile;
         writeToLog(pArgLog+"\r\n",log);
-        
-		try{
-			connection.setKeepAlive(false);
-		}catch(Exception e){
-			System.out.println("Error at socket creation");
-		}
 	}
     
 	public void run(){
@@ -94,10 +88,7 @@ class Clienthandler implements Runnable{
 			clientReply = new DataOutputStream(connection.getOutputStream());
 			line = clientRequest.readLine();
             writeToLog(line+"\r\n",log);
-			System.out.println(line); /////////////////
             valid = line.startsWith("GET");
-            
-			System.out.println(valid); ////////////////
             
 			if(!valid) sendNotImplemented();
             
@@ -105,7 +96,6 @@ class Clienthandler implements Runnable{
 				sendNotFound();
 			}else{
 				mimeType = URLConnection.guessContentTypeFromName(file.getName());
-				System.out.println(mimeType);////////////
 
 				fileBytes = Files.readAllBytes(file.toPath());
 				lastMod = getLastModified();
@@ -116,9 +106,6 @@ class Clienthandler implements Runnable{
 						sendNotModified();
 					}
 				}else{
-					System.out.println(fileBytes.length);////////////
-					System.out.println(lastMod); ///////////////
-					System.out.println(date);/////////////////
 					System.out.println(mimeType + "  " + lastMod + " " + date);
 					sendValidResponse();
 				}
@@ -139,15 +126,15 @@ class Clienthandler implements Runnable{
 		}
 	}
     
-	private synchronized void sendNotImplemented(){
+	private void sendNotImplemented(){
 		try{
 			date = getServerTime();
 			
-			clientReply.writeBytes("HTTP/1.1 501 Not Implemented\r\n");
+			clientReply.writeBytes(" HTTP/1.1 501 Not Implemented\r\n");
 			writeToLog("HTTP/1.1 501 Not Implemented\r\n", log);
 			clientReply.writeBytes("Date: " + date + "\r\n");
 			writeToLog("Date: " + date + "\r\n", log);
-			if(connection.getKeepAlive()){
+			if(connection.getSoTimeout() != 0){
 				clientReply.writeBytes("Connection: keep-alive\r\n");
 				writeToLog("Connection: keep-alive\r\n", log);
 			}else{
@@ -157,21 +144,21 @@ class Clienthandler implements Runnable{
 			clientReply.writeBytes("\r\n");
 			writeToLog("\r\n", log);
 			clientReply.flush();
-			if(!connection.getKeepAlive()) connection.close();
+			if(connection.getSoTimeout() == 0) connection.close();
 		}catch(Exception e){
 			System.out.println("Error sending 501.");
 		}
 	}
     
-	private synchronized void sendNotFound(){
+	private void sendNotFound(){
 		try{
 			date = getServerTime();
 			
-			clientReply.writeBytes("HTTP/1.1 404 Not Found\r\n");
+			clientReply.writeBytes(" HTTP/1.1 404 Not Found\r\n");
 			writeToLog("HTTP/1.1 404 Not Found\r\n", log);
 			clientReply.writeBytes("Date: " + date + "\r\n");
 			writeToLog("Date: " + date + "\r\n", log);
-			if(connection.getKeepAlive()){
+			if(connection.getSoTimeout() != 0){
 				clientReply.writeBytes("Connection: keep-alive\r\n");
 				writeToLog("Connection: keep-alive\r\n", log);
 			}else{
@@ -194,21 +181,21 @@ class Clienthandler implements Runnable{
 			writeToLog("\r\n", log);
 			
 			clientReply.flush();
-			if(!connection.getKeepAlive()) connection.close();
+			if(connection.getSoTimeout() == 0) connection.close();
 		}catch(Exception e){
 			System.out.println("Error sending 404:   " + e);
 		}
 	}
 
-	private synchronized void sendNotModified(){
+	private void sendNotModified(){
 		try{
 			date = getServerTime();
 			
-			clientReply.writeBytes("HTTP/1.1 304 Not Modified\r\n");
+			clientReply.writeBytes(" HTTP/1.1 304 Not Modified\r\n");
 			writeToLog("HTTP/1.1 304 Not Modified\r\n", log);
 			clientReply.writeBytes("Date: " + date + "\r\n");
 			writeToLog("Date: " + date + "\r\n", log);
-			if(connection.getKeepAlive()){
+			if(connection.getSoTimeout() != 0){
 				clientReply.writeBytes("Connection: keep-alive\r\n");
 				writeToLog("Connection: keep-alive\r\n", log);
 			}else{
@@ -218,17 +205,17 @@ class Clienthandler implements Runnable{
 			clientReply.writeBytes("\r\n");
 			writeToLog("\r\n", log);
 			clientReply.flush();
-			if(!connection.getKeepAlive()) connection.close();
+			if(connection.getSoTimeout() == 0) connection.close();
 		}catch(Exception e){
 			System.out.println("Error sending 304.");
 		}
 	}
     
-	private synchronized void sendValidResponse(){
+	private void sendValidResponse(){
 		try{
 			date = getServerTime();
 			
-			clientReply.writeBytes("HTTP/1.1 200 OK\r\n");
+			clientReply.writeBytes(" HTTP/1.1 200 OK\r\n");
 			writeToLog("HTTP/1.1 200 OK\r\n", log);
 			clientReply.writeBytes("Content-Length: " + fileBytes.length + "\r\n");
 			writeToLog("Content-Length: " + fileBytes.length + "\r\n", log);
@@ -238,7 +225,7 @@ class Clienthandler implements Runnable{
 			writeToLog("Last-Modified: " + lastMod + "\r\n", log);
 			clientReply.writeBytes("Date: " + date + "\r\n");
 			writeToLog("Date: " + date + "\r\n", log);
-			if(connection.getKeepAlive()){
+			if(connection.getSoTimeout() != 0){
 				clientReply.writeBytes("Connection: keep-alive\r\n");
 				writeToLog("Connection: keep-alive\r\n", log);
 			}else{
@@ -252,7 +239,7 @@ class Clienthandler implements Runnable{
 				clientReply.write(fileBytes[i]);
 			}
 			clientReply.flush();
-			if(!connection.getKeepAlive()){
+			if(connection.getSoTimeout() == 0){
 				System.out.println("Connection closed.\n");
 				connection.close();
 			}
@@ -281,14 +268,14 @@ class Clienthandler implements Runnable{
 					ifMod = st.nextToken();
 				}else if(temp.equals("Connection:")){
 					if(st.nextToken().equals("keep-alive")){
-						connection.setKeepAlive(true);
 						connection.setSoTimeout(20000);
 					}else{
-						connection.setKeepAlive(false);
+						connection.setSoTimeout(0);
 					}
 				}
-				//line = clientRequest.readLine();
+				
 			}
+			line = clientRequest.readLine();
 		}catch(Exception e){
 			System.out.println("\nError parsing request:   "+e);
 		}
@@ -313,6 +300,7 @@ class Clienthandler implements Runnable{
 			try {
 				PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(logfile, true)));
 				out.println(text);
+				out.flush();
 				out.close();
 			} catch (IOException e) {
 				System.out.println("Error Writing to Log.");

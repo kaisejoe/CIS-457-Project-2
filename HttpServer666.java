@@ -1,0 +1,324 @@
+import java.io.*;
+import java.text.*;
+import java.net.*;
+import java.util.*;
+import java.nio.file.*;
+import javax.activation.*;
+
+/*******************************************************************************
+* A simple HTTP server that responds to a HTTP/1.1 GET request. No other request
+* types are supported. Reponses include the 200, 304, 404, and 501.
+*
+* @author Joel Kaiser, Brett Barrett, Corey Bennett, Douglas MacDonald
+*******************************************************************************/
+
+public class HttpServer3 {
+    private static int port = 8080;
+    public static void main(String args[]) throws Exception{
+    /* Reads in the Args from the project call
+         *  Will read in all args, does not matter the order as
+         *  long as each call is preceded by the proper - identifier
+         * Will set the log file, doc root, and port properly
+         * if no port, port is preset to 8080.
+         */
+		String docroot = System.getProperty("user.dir"); //set default directory
+		String logfile = "", argLog="";
+		for(int x = 0; x < args.length; x++){
+            argLog+=args[x]+" ";
+			switch(args[x]){
+				case"-p":{
+					x++;
+					port = Integer.parseInt(args[x]);
+                    argLog+=port+" ";
+					break;
+				}case"-docroot":{
+					x++;
+					docroot = args[x];
+                    argLog+=docroot+" ";
+					System.out.println("root: " + docroot);
+					break;
+				}case"-logfile":{
+					x++;
+					logfile = docroot + "\\" + args[x];
+                    argLog+=logfile+" ";
+					System.out.println("Log:" + logfile);
+					break;
+				}default:{
+					System.out.println("Error reading args");
+				}
+			}
+		}
+		ServerSocket listener = new ServerSocket(port);
+		System.out.println("HTTP server is running on port " + port + ".");
+		
+		if(logfile.equals("")){
+			System.out.println("No log file specified.");
+		}
+        
+		while(true){
+			Socket s = listener.accept();
+			Clienthandler c = new Clienthandler(s, docroot, logfile, argLog);
+            
+			Thread t = new Thread(c);
+			t.start();
+		}
+	}
+}
+
+class Clienthandler implements Runnable{
+	Socket connection;
+    String line, mimeType, date, lastMod, ifMod, root;
+	private static String log;
+	File file;
+	StringTokenizer st;
+	byte[] fileBytes;
+	BufferedReader clientRequest;
+	DataOutputStream clientReply;
+    
+	static SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
+    
+	boolean valid = false;
+    
+	Clienthandler(Socket s, String docroot, String logfile, String pArgLog){
+        root = docroot;
+		try{
+            connection = s;
+            connection.setSoTimeout(0);
+        }
+        catch(Exception e){
+            System.out.println("Timeout error: "+e);
+        }
+		log = logfile;
+        
+	}
+    
+	public void run(){
+		boolean run = true;
+		while(run){
+			try{
+				ifMod = ""; //if modified since
+				clientRequest = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+				clientReply = new DataOutputStream(connection.getOutputStream());
+				line = clientRequest.readLine();
+            
+            
+				if(line != null){ 
+					writeToLog(line+"\r\n",log);
+					valid = line.startsWith("GET");
+            
+					if(!valid){ 
+						sendNotImplemented();
+					}else{
+						if(!parseRequest()){
+							sendNotFound();
+					}else{
+							mimeType = URLConnection.guessContentTypeFromName(file.getName());
+
+							fileBytes = Files.readAllBytes(file.toPath());
+							lastMod = getLastModified();
+							date = getServerTime();
+
+							if(!ifMod.equals("")){
+								if(dateFormat.parse(lastMod).after(dateFormat.parse(ifMod))){
+									sendNotModified();
+								}
+							}else{
+								System.out.println(mimeType + "  " + lastMod + " " + date);
+								sendValidResponse();
+							}
+						}
+					}
+				}
+			}catch(Exception e){			
+				if(e instanceof java.net.SocketTimeoutException){
+					System.out.println("Socket timeout, connection closed.");
+					try{
+						connection.close();
+						run = false;
+					}catch (Exception b){
+					}
+				}else{
+					e.printStackTrace();
+					System.out.println("\nError running:   "+e);
+				}
+			}
+		}
+	}
+    
+	private void sendNotImplemented(){
+		try{
+			date = getServerTime();
+
+			clientReply.writeBytes(" HTTP/1.1 501 Not Implemented\r\n");
+			writeToLog("HTTP/1.1 501 Not Implemented\r\n", log);
+			clientReply.writeBytes("Date: " + date + "\r\n");
+			writeToLog("Date: " + date + "\r\n", log);
+			if(connection.getSoTimeout() != 0){
+				clientReply.writeBytes("Connection: keep-alive\r\n");
+				writeToLog("Connection: keep-alive\r\n", log);
+			}else{
+				clientReply.writeBytes("Connection: close\r\n");
+				writeToLog("Connection: close\r\n", log);
+			}
+			clientReply.writeBytes("\r\n");
+			writeToLog("\r\n", log);
+			clientReply.flush();
+		}catch(Exception e){
+			System.out.println("Error sending 501: "+ e);
+		}
+	}
+    
+	private void sendNotFound(){
+		try{
+			date = getServerTime();
+
+			clientReply.writeBytes(" HTTP/1.1 404 Not Found\r\n");
+			writeToLog("HTTP/1.1 404 Not Found\r\n", log);
+			clientReply.writeBytes("Date: " + date + "\r\n");
+			writeToLog("Date: " + date + "\r\n", log);
+			if(connection.getSoTimeout() != 0){
+				clientReply.writeBytes("Connection: keep-alive\r\n");
+				writeToLog("Connection: keep-alive\r\n", log);
+			}else{
+				clientReply.writeBytes("Connection: close\r\n");
+				writeToLog("Connection: close\r\n", log);
+			}
+			clientReply.writeBytes("\r\n");
+			writeToLog("\r\n", log);
+			file = new File("404.html");
+			if(file != null){
+				fileBytes = Files.readAllBytes(file.toPath());
+				for(int i = 0; i < fileBytes.length; i++){
+					clientReply.write(fileBytes[i]);
+				}
+			}else{
+				clientReply.writeBytes("404 File Not Found\r\n");
+				clientReply.writeBytes("The server was unable to find the file requested.");
+			}
+			clientReply.writeBytes("\r\n");
+			writeToLog("\r\n", log);
+			clientReply.flush();
+		}catch(Exception e){
+			System.out.println("Error sending 404:   " + e);
+		}
+	}
+
+	private void sendNotModified(){
+		try{
+			date = getServerTime();
+
+			clientReply.writeBytes(" HTTP/1.1 304 Not Modified\r\n");
+			writeToLog("HTTP/1.1 304 Not Modified\r\n", log);
+			clientReply.writeBytes("Date: " + date + "\r\n");
+			writeToLog("Date: " + date + "\r\n", log);
+			if(connection.getSoTimeout() != 0){
+				clientReply.writeBytes("Connection: keep-alive\r\n");
+				writeToLog("Connection: keep-alive\r\n", log);
+			}else{
+				clientReply.writeBytes("Connection: close\r\n");
+				writeToLog("Connection: close\r\n", log);
+			}
+			clientReply.writeBytes("\r\n");
+			writeToLog("\r\n", log);
+			clientReply.flush();
+		}catch(Exception e){
+			System.out.println("Error sending 304.");
+		}
+	}
+    
+	private void sendValidResponse(){
+		try{
+			date = getServerTime();
+
+			clientReply.writeBytes("HTTP/1.1 200 OK\r\n");
+			writeToLog("HTTP/1.1 200 OK\r\n", log);
+			clientReply.writeBytes("Content-Length: " + fileBytes.length + "\r\n");
+			writeToLog("Content-Length: " + fileBytes.length + "\r\n", log);
+			clientReply.writeBytes("Content-Type: " + mimeType + "\r\n");
+			writeToLog("Content-Type: " + mimeType + "\r\n", log);
+			clientReply.writeBytes("Last-Modified: " + lastMod + "\r\n");
+			writeToLog("Last-Modified: " + lastMod + "\r\n", log);
+			clientReply.writeBytes("Date: " + date + "\r\n");
+			writeToLog("Date: " + date + "\r\n", log);
+			if(connection.getSoTimeout() != 0){
+				clientReply.writeBytes("Connection: keep-alive\r\n");
+				writeToLog("Connection: keep-alive\r\n", log);
+			}else{
+				clientReply.writeBytes("Connection: close\r\n");
+				writeToLog("Connection: close\r\n", log);
+			}
+			clientReply.writeBytes("\r\n");
+			writeToLog("\r\n", log);
+            
+			for(int i = 0; i < fileBytes.length; i++){
+				clientReply.write(fileBytes[i]);
+			}
+			clientReply.flush();
+		}catch(Exception e){
+			System.out.println("Error sending 200.");
+		}
+	}
+    
+	private boolean parseRequest(){
+		String temp;
+		try{
+			line = line.substring(3).trim();
+			st = new StringTokenizer(line);
+			temp = st.nextToken();
+            //Security. Checking to make sure the client doesn't go into a folder.
+            //temp = temp.substring(temp.lastIndexOf("/"));
+			file = new File(root + "\\" + temp.substring(1));
+			line = clientRequest.readLine();
+            while(!line.equals("")){
+				st = new StringTokenizer(line);
+				while(st.hasMoreTokens()){
+					temp = st.nextToken();
+					if(temp.equals("If-Modified-Since:")){
+						ifMod = st.nextToken();
+						while(st.hasMoreTokens()){
+							ifMod += " " + st.nextToken();
+						}
+					}else if(temp.equals("Connection:")){
+						if(st.nextToken().equals("keep-alive")){
+							connection.setSoTimeout(20000);
+							System.out.println("Timeout set to 20 seconds.");
+						}else{
+							connection.setSoTimeout(0);
+						}
+					}
+				}
+				line = clientRequest.readLine();
+			}
+			System.out.println("Escaped loop.");
+			
+		}catch(Exception e){
+			System.out.println("\nError parsing request:   "+e);
+		}
+        
+		return file.exists();
+	}
+    
+	private String getLastModified(){
+		dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
+		return dateFormat.format(file.lastModified());
+	}
+    
+	private String getServerTime() {
+		Calendar calendar = Calendar.getInstance();
+		dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
+		return dateFormat.format(calendar.getTime());
+	}
+	private static synchronized void writeToLog(String text, String logfile){
+		if(!logfile.equals("")){
+			try {
+				PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(logfile, true)));
+				out.println(text);
+				out.flush();
+				out.close();
+			} catch (IOException e) {
+				System.out.println("Error Writing to Log.");
+				e.printStackTrace();
+			}	
+		}
+	}
+}
